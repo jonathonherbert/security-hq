@@ -3,6 +3,7 @@ package utils.attempt
 
 case class FailedAttempt(failures: List[Failure]) {
   def statusCode: Int = failures.map(_.statusCode).max
+  def throwable: Option[Throwable] = failures.find(_.throwable.isDefined).flatMap(_.throwable)
 }
 object FailedAttempt {
   def apply(error: Failure): FailedAttempt = {
