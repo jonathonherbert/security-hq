@@ -1,5 +1,6 @@
 package services
 
+import aws.AWSClients
 import aws.ec2.EC2
 import aws.iam.IAMClient
 import aws.support.TrustedAdvisorExposedIAMKeys
@@ -18,6 +19,7 @@ import scala.concurrent.duration._
 
 class CacheService(config: Configuration, lifecycle: ApplicationLifecycle, environment: Environment)(implicit ec: ExecutionContext) {
   private val accounts = Config.getAwsAccounts(config)
+  private val allTheAWSClients = new AWSClients(accounts)
   private val startingCache = accounts.map(acc => (acc, Left(Failure.cacheServiceError(acc.id, "cache").attempt))).toMap
   private val credentialsBox: Box[Map[AwsAccount, Either[FailedAttempt, CredentialReportDisplay]]] = Box(startingCache)
   private val exposedKeysBox: Box[Map[AwsAccount, Either[FailedAttempt, List[ExposedIAMKeyDetail]]]] = Box(startingCache)
@@ -53,7 +55,7 @@ class CacheService(config: Configuration, lifecycle: ApplicationLifecycle, envir
   private def refreshCredentialsBox(): Unit = {
     Logger.info("Started refresh of the Credentials data")
     for {
-      allCredentialReports <- IAMClient.getAllCredentialReports(accounts)
+      allCredentialReports <- IAMClient.getAllCredentialReports(accounts, allTheAWSClients)
     } yield {
       Logger.info("Sending the refreshed data to the Credentials Box")
       credentialsBox.send(allCredentialReports.toMap)
@@ -63,7 +65,7 @@ class CacheService(config: Configuration, lifecycle: ApplicationLifecycle, envir
   private def refreshExposedKeysBox(): Unit = {
     Logger.info("Started refresh of the Exposed Keys data")
     for {
-      allExposedKeys <- TrustedAdvisorExposedIAMKeys.getAllExposedKeys(accounts)
+      allExposedKeys <- TrustedAdvisorExposedIAMKeys.getAllExposedKeys(accounts, allTheAWSClients)
     } yield {
       Logger.info("Sending the refreshed data to the Exposed Keys Box")
       exposedKeysBox.send(allExposedKeys.toMap)
@@ -73,8 +75,8 @@ class CacheService(config: Configuration, lifecycle: ApplicationLifecycle, envir
   private def refreshSgsBox(): Unit = {
     Logger.info("Started refresh of the Security Groups data")
     for {
-      _ <- EC2.refreshSGSReports(accounts)
-      allFlaggedSgs <- EC2.allFlaggedSgs(accounts)
+      _ <- EC2.refreshSGSReports(accounts, allTheAWSClients)
+      allFlaggedSgs <- EC2.allFlaggedSgs(accounts, allTheAWSClients)
     } yield {
       Logger.info("Sending the refreshed data to the Security Groups Box")
       sgsBox.send(allFlaggedSgs.toMap)

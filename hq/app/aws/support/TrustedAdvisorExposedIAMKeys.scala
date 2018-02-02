@@ -1,6 +1,8 @@
 package aws.support
 
+import aws.AWSClients
 import aws.support.TrustedAdvisor.{getTrustedAdvisorCheckDetails, parseTrustedAdvisorCheckResult}
+import com.amazonaws.regions.Regions
 import com.amazonaws.services.support.AWSSupportAsync
 import com.amazonaws.services.support.model.TrustedAdvisorResourceDetail
 import model.{AwsAccount, ExposedIAMKeyDetail, TrustedAdvisorDetailsResult}
@@ -13,10 +15,10 @@ import scala.concurrent.{ExecutionContext, Future}
 object TrustedAdvisorExposedIAMKeys {
   val AWS_EXPOSED_ACCESS_KEYS_IDENTIFIER = "12Fnkpl8Y5"
 
-  def getAllExposedKeys(accounts: List[AwsAccount])(implicit ec: ExecutionContext): Attempt[List[(AwsAccount, Either[FailedAttempt, List[ExposedIAMKeyDetail]])]] = {
+  def getAllExposedKeys(accounts: List[AwsAccount], allTheAWSClients: AWSClients)(implicit ec: ExecutionContext): Attempt[List[(AwsAccount, Either[FailedAttempt, List[ExposedIAMKeyDetail]])]] = {
     Attempt.Async.Right {
       Future.traverse(accounts) { account =>
-        exposedKeysForAccount(account).asFuture.map(account -> _)
+        exposedKeysForAccount(account, allTheAWSClients).asFuture.map(account -> _)
       }
     }
   }
@@ -26,8 +28,8 @@ object TrustedAdvisorExposedIAMKeys {
       .flatMap(parseTrustedAdvisorCheckResult(parseExposedIamKeyDetail, ec))
   }
 
-  private def exposedKeysForAccount(account: AwsAccount)(implicit ec: ExecutionContext): Attempt[List[ExposedIAMKeyDetail]] = {
-    val supportClient = TrustedAdvisor.client(account)
+  private def exposedKeysForAccount(account: AwsAccount, allTheAWSClients: AWSClients)(implicit ec: ExecutionContext): Attempt[List[ExposedIAMKeyDetail]] = {
+    val supportClient = allTheAWSClients.getTAClient(account)
     for {
         exposedIamKeysResult <- TrustedAdvisorExposedIAMKeys.getExposedIAMKeys(supportClient)
         exposedIamKeys = exposedIamKeysResult.flaggedResources

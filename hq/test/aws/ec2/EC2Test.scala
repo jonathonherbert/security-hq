@@ -1,5 +1,6 @@
 package aws.ec2
 
+import aws.AWSClients
 import com.amazonaws.services.ec2.model._
 import model._
 import org.scalacheck.Gen
@@ -240,12 +241,14 @@ class EC2Test extends FreeSpec with Matchers with Checkers with PropertyChecks w
 
     "getVpcs" - {
 
+      val account = AwsAccount("security-test", "security", "security-test")
+      val allTheEC2Clients = new AWSClients(List(account))
       "returns vpc details in a map" in {
-        EC2.getVpcs(AwsAccount("security-test", "security", "security-test"), sgsList)( _ => vpcsResult).value shouldBe vpcsMap
+        EC2.getVpcs(account, sgsList, allTheEC2Clients)( _ => vpcsResult).value shouldBe vpcsMap
       }
 
       "returns empty vpc details" in {
-        EC2.getVpcs(AwsAccount("security-test", "security", "security-test"), sgsList)( _ => Attempt.Right(Map.empty)).value shouldBe Map.empty
+        EC2.getVpcs(account, sgsList, allTheEC2Clients)( _ => Attempt.Right(Map.empty)).value shouldBe Map.empty
       }
     }
 

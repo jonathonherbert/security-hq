@@ -1,6 +1,6 @@
 package aws.iam
 
-import aws.AWS
+import aws.{AWS, AWSClients}
 import aws.AwsAsyncHandler._
 import com.amazonaws.regions.{Region, Regions}
 import com.amazonaws.services.identitymanagement.model.{GenerateCredentialReportRequest, GenerateCredentialReportResult, GetCredentialReportRequest}
@@ -14,11 +14,12 @@ import scala.concurrent.duration._
 
 
 object IAMClient {
-  private def client(account: AwsAccount, region: Region = Region.getRegion(Regions.EU_WEST_1)): AmazonIdentityManagementAsync = {
+  def client(account: AwsAccount, region: Regions): AmazonIdentityManagementAsync = {
     val auth = AWS.credentialsProvider(account)
     AmazonIdentityManagementAsyncClientBuilder.standard()
       .withCredentials(auth)
-      .withRegion(Option(Regions.getCurrentRegion).getOrElse(region).getName).build()
+      .withRegion(region)
+      .build()
   }
 
   private def generateCredentialsReport(client: AmazonIdentityManagementAsync)(implicit ec: ExecutionContext): Attempt[GenerateCredentialReportResult] = {
@@ -31,19 +32,19 @@ object IAMClient {
     handleAWSErrs(awsToScala(client.getCredentialReportAsync)(request)).flatMap(CredentialsReport.extractReport)
   }
 
-  def getCredentialsReport(account: AwsAccount)(implicit ec: ExecutionContext): Attempt[CredentialReportDisplay] = {
+  def getCredentialsReport(account: AwsAccount, allTheAWSClients: AWSClients)(implicit ec: ExecutionContext): Attempt[CredentialReportDisplay] = {
     val delay = 3.seconds
-    val client = IAMClient.client(account)
+    val client = allTheAWSClients.getIAMClient(account)
     for {
       _ <- Retry.until(generateCredentialsReport(client), CredentialsReport.isComplete, "Failed to generate credentials report", delay)
       report <- getCredentialsReport(client)
     } yield ReportDisplay.toCredentialReportDisplay(report)
   }
 
-  def getAllCredentialReports(accounts: Seq[AwsAccount])(implicit executionContext: ExecutionContext): Attempt[Seq[(AwsAccount, Either[FailedAttempt, CredentialReportDisplay])]] = {
+  def getAllCredentialReports(accounts: Seq[AwsAccount], allTheAWSClients: AWSClients)(implicit executionContext: ExecutionContext): Attempt[Seq[(AwsAccount, Either[FailedAttempt, CredentialReportDisplay])]] = {
     Attempt.Async.Right {
       Future.traverse(accounts) { account =>
-        getCredentialsReport(account).asFuture.map(account -> _)
+        getCredentialsReport(account, allTheAWSClients).asFuture.map(account -> _)
       }
     }
   }
