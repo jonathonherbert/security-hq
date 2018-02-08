@@ -3,7 +3,6 @@
 # Debug option
 DEBUG_PARAMS=""
 TC_PARAMS=""
-COLOUR_PARAMS=""
 
 CONF_PARAMS="-Dconfig.file=$HOME/.gu/security-hq.local.conf"
 for arg in "$@"
@@ -28,7 +27,6 @@ if [ $TEAMCITY_BUILD_PROPERTIES_FILE ]; then
   else
     echo "Unable to locate Team City build properties file $TEAMCITY_BUILD_PROPERTIES_FILE"
   fi
-  COLOUR_PARAMS="-Dsbt.log.noformat=true"
 fi
 
 java $DEBUG_PARAMS \
@@ -37,5 +35,4 @@ java $DEBUG_PARAMS \
     -XX:+CMSClassUnloadingEnabled \
     $CONF_PARAMS \
     $TC_PARAMS \
-    $COLOUR_PARAMS \
     -jar bin/sbt-launch.jar "$@"
