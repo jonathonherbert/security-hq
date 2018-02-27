@@ -242,16 +242,14 @@ Resources:
           aws --region eu-west-1 s3 cp s3://${SecurityHQSourceBundleBucket}/security/${Stage}/security-hq/security-hq.conf /security-hq
           aws --region eu-west-1 s3 cp s3://${SecurityHQSourceBundleBucket}/security/${Stage}/security-hq/security-hq-service-account-cert.json /security-hq
           aws --region eu-west-1 s3 cp s3://${SecurityHQSourceBundleBucket}/security/${Stage}/security-hq/security-hq.tgz /security-hq
-          # Expand zipped tar file; remove base directory 
+          # Expand zipped tar file; remove base directory
           tar -xzf /security-hq/security-hq.tgz --strip 1 --directory /security-hq/
-          # Put upstart file in correct location with correct ownership
-          mv /security-hq/upstart/security-hq.conf /etc/init
-          chown root /etc/init/security-hq.conf
-          chmod 700 /etc/init/security-hq.conf
+          # Put systemd file in correct location with correct ownership
+          /bin/bash /security-hq/systemd/install
           # Give ownership of all the application files to the application user
           chown -R security-hq /security-hq
           # Start application
-          start security-hq
+          systemctl start security-hq.service
 
   InspectorResourceGroup:
     Type: "AWS::Inspector::ResourceGroup"
@@ -332,7 +330,14 @@ Resources:
     Type: "AWS::Events::Rule"
     Properties:
       Description: "A schedule for triggering AWS Inspector runs every three days"
-      Name: "SecurityHQInspector"
+      Name:
+        Fn::Join:
+          - "--"
+          -
+            - "SecurityHQInspector"
+            - Fn::FindInMap: [ Constants, App, Value ]
+            - Fn::FindInMap: [ Constants, Stack, Value ]
+            - Ref: Stage
       ScheduleExpression: "rate(3 days)"
       Targets:
         - Arn:
