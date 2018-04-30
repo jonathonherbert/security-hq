@@ -16,7 +16,6 @@ class Lambda extends RequestHandler[ConfigEvent, Unit] with StrictLogging {
   private val snsTopicArn = sys.env("SnsTopicArn")
 
   override def handleRequest(input: ConfigEvent, context: Context): Unit = {
-    logger.debug(s"Starting check of $input")
     for {
       invokingEvent <- JsonParsing.eventDetails(input)
       configurationItem <- invokingEvent.configurationItem
@@ -29,6 +28,6 @@ class Lambda extends RequestHandler[ConfigEvent, Unit] with StrictLogging {
       status = SecurityGroups.status(sgConfiguration, loadBalancers)
       _ <- Notifier.shouldNotify(invokingEvent, status)
       notification = Notifier.createNotification(sgConfiguration.groupId, sgConfiguration.tags, account, accountName, regionName)
-    } Notifier.send(notification, snsTopicArn, snsClient)
+    } Notifier.send(notification, snsTopicArn, snsClient, input)
   }
 }

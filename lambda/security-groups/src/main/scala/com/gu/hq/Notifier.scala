@@ -1,5 +1,6 @@
 package com.gu.hq
 
+import com.amazonaws.services.lambda.runtime.events.ConfigEvent
 import com.amazonaws.services.sns.AmazonSNSAsync
 import com.gu.anghammarad.Anghammarad
 import com.gu.anghammarad.models._
@@ -39,15 +40,18 @@ object Notifier extends StrictLogging {
     )
     val message = s"Warning: Security group **$groupId** in account **$accountName** is open to the world"
     val targets = getTargetsFromTags(targetTags, accountId)
-
     Notification(subject, message, actions, targets, channel, sourceSystem)
   }
 
   def send(
     notification: Notification,
     topicArn: String,
-    snsClient: AmazonSNSAsync): Unit = {
+    snsClient: AmazonSNSAsync, event: ConfigEvent): Unit = {
 
+    logger.info(event.getInvokingEvent)
+    logger.info(notification.toString)
+
+    /*
     val result = Anghammarad.notify(notification, topicArn, snsClient)
 
     try {
@@ -57,6 +61,7 @@ object Notifier extends StrictLogging {
       case NonFatal(err) =>
         logger.error("Failed to send notification", err)
     }
+    */
   }
 
   private def getTargetsFromTags(tags: List[Tag], account: String):List[Target] = {
