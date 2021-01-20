@@ -1,6 +1,7 @@
-import com.amazonaws.regions.Regions
+// import com.amazonaws.regions.Regions
 import model.AwsAccount
 import play.api.Logging
+import software.amazon.awssdk.regions.Region
 import utils.attempt.{Attempt, FailedAttempt, Failure}
 
 import scala.reflect.ClassTag
@@ -9,9 +10,9 @@ package object aws extends Logging {
   type AwsClients[A] = List[AwsClient[A]]
 
   implicit class AwsClientsList[A](clients: AwsClients[A])(implicit classTag: ClassTag[A]) {
-    def get(account: AwsAccount, region: Regions): Attempt[AwsClient[A]] = {
+    def get(account: AwsAccount, region: Region): Attempt[AwsClient[A]] = {
       val maybeClient = clients.find { client =>
-        client.account == account && client.region.getName == region.getName
+        client.account == account && client.region.name == region.id //TODO check this
       }
 
       val errorString = s"No ${classTag.runtimeClass.getSimpleName} client exists for ${account.id} and $region"

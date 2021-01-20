@@ -1,9 +1,10 @@
 package logic
 
-import com.amazonaws.services.inspector.model.{AssessmentRun, DescribeAssessmentRunsResult, _}
+//import com.amazonaws.services.inspector.model.{AssessmentRun, DescribeAssessmentRunsResult, _}
 import model.InspectorAssessmentRun
 import org.joda.time.format.DateTimeFormat
 import org.joda.time.{DateTime, Days}
+import software.amazon.awssdk.services.inspector.model.{AssessmentRun, DescribeAssessmentRunsResponse, ListAssessmentRunsResponse}
 
 import scala.collection.JavaConverters._
 
@@ -40,37 +41,37 @@ object InspectorResults {
     }
   }
 
-  def parseListAssessmentRunsResult(result: ListAssessmentRunsResult): List[String] = {
-    result.getAssessmentRunArns.asScala.toList
+  def parseListAssessmentRunsResult(result: ListAssessmentRunsResponse): List[String] = {
+    result.assessmentRunArns.asScala.toList
   }
 
-  def parseDescribeAssessmentRunsResult(result: DescribeAssessmentRunsResult): List[InspectorAssessmentRun] = {
-    result.getAssessmentRuns.asScala.toList.flatMap(parseCompletedAssessmentRun)
+  def parseDescribeAssessmentRunsResult(result: DescribeAssessmentRunsResponse): List[InspectorAssessmentRun] = {
+    result.assessmentRuns.asScala.toList.flatMap(parseCompletedAssessmentRun)
   }
 
   /**
     * Parses a *completed* assessment, if it matches the format used by our automatic inspection service.
     */
   private[logic] def parseCompletedAssessmentRun(assessmentRun: AssessmentRun): Option[InspectorAssessmentRun] = {
-    if (assessmentRun.getState == "COMPLETED" && assessmentRun.getDataCollected == true) {
+    if (assessmentRun.stateAsString == "COMPLETED" && assessmentRun.dataCollected == true) {
       for {
-        appId <- InspectorResults.appId(assessmentRun.getName)
+        appId <- InspectorResults.appId(assessmentRun.name)
       } yield {
         InspectorAssessmentRun(
-          arn = assessmentRun.getArn,
-          name = assessmentRun.getName,
+          arn = assessmentRun.arn,
+          name = assessmentRun.name,
           appId = appId,
-          assessmentTemplateArn = assessmentRun.getAssessmentTemplateArn,
-          state = assessmentRun.getState,
-          durationInSeconds = assessmentRun.getDurationInSeconds,
-          rulesPackageArns = assessmentRun.getRulesPackageArns.asScala.toList,
-          userAttributesForFindings = assessmentRun.getUserAttributesForFindings.asScala.toList.map(attr => (attr.getKey, attr.getValue)),
-          createdAt = new DateTime(assessmentRun.getCreatedAt),
-          startedAt = new DateTime(assessmentRun.getStartedAt),
-          completedAt = new DateTime(assessmentRun.getCompletedAt),
-          stateChangedAt = new DateTime(assessmentRun.getStateChangedAt),
-          dataCollected = assessmentRun.getDataCollected,
-          findingCounts = assessmentRun.getFindingCounts.asScala.toMap.mapValues(_.toInt)
+          assessmentTemplateArn = assessmentRun.assessmentTemplateArn,
+          state = assessmentRun.stateAsString,
+          durationInSeconds = assessmentRun.durationInSeconds,
+          rulesPackageArns = assessmentRun.rulesPackageArns.asScala.toList,
+          userAttributesForFindings = assessmentRun.userAttributesForFindings.asScala.toList.map(attr => (attr.key, attr.value)),
+          createdAt = new DateTime(assessmentRun.createdAt),
+          startedAt = new DateTime(assessmentRun.startedAt),
+          completedAt = new DateTime(assessmentRun.completedAt),
+          stateChangedAt = new DateTime(assessmentRun.stateChangedAt),
+          dataCollected = assessmentRun.dataCollected,
+          findingCounts = assessmentRun.findingCountsAsStrings.asScala.toMap.mapValues(_.toInt)
         )
       }
     } else {

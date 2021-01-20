@@ -2,10 +2,10 @@ package aws.support
 
 import aws.support.TrustedAdvisor.{getTrustedAdvisorCheckDetails, parseTrustedAdvisorCheckResult}
 import aws.{AwsClient, AwsClients}
-import com.amazonaws.services.s3.AmazonS3
-import com.amazonaws.services.s3.model.AmazonS3Exception
-import com.amazonaws.services.support.AWSSupportAsync
-import com.amazonaws.services.support.model.TrustedAdvisorResourceDetail
+import software.amazon.awssdk.services.s3.S3Client
+import software.amazon.awssdk.services.s3.model.{GetBucketEncryptionRequest, S3Exception}
+import software.amazon.awssdk.services.support.SupportAsyncClient
+import software.amazon.awssdk.services.support.model.TrustedAdvisorResourceDetail
 import model._
 import utils.attempt.{Attempt, FailedAttempt, Failure}
 
@@ -15,7 +15,7 @@ import scala.concurrent.{ExecutionContext, Future}
 object TrustedAdvisorS3 {
   private val S3_Bucket_Permissions = "Pfx0RwqBli"
 
-  def getAllPublicBuckets(accounts: List[AwsAccount], taClients: AwsClients[AWSSupportAsync], s3Clients: AwsClients[AmazonS3])(implicit ec: ExecutionContext): Attempt[List[(AwsAccount, Either[FailedAttempt, List[BucketDetail]])]] = {
+  def getAllPublicBuckets(accounts: List[AwsAccount], taClients: AwsClients[SupportAsyncClient], s3Clients: AwsClients[S3Client])(implicit ec: ExecutionContext): Attempt[List[(AwsAccount, Either[FailedAttempt, List[BucketDetail]])]] = {
     Attempt.Async.Right {
       Future.traverse(accounts) { account =>
         publicBucketsForAccount(account, taClients, s3Clients).asFuture.map(account -> _)
@@ -23,27 +23,27 @@ object TrustedAdvisorS3 {
     }
   }
 
-  private def getBucketReport(client: AwsClient[AWSSupportAsync])(implicit ec: ExecutionContext): Attempt[TrustedAdvisorDetailsResult[BucketDetail]] = {
+  private def getBucketReport(client: AwsClient[SupportAsyncClient])(implicit ec: ExecutionContext): Attempt[TrustedAdvisorDetailsResult[BucketDetail]] = {
     getTrustedAdvisorCheckDetails(client, S3_Bucket_Permissions)
       .flatMap(parseTrustedAdvisorCheckResult(parseBucketDetail, ec))
   }
 
 //  When you use server-side encryption, Amazon S3 encrypts an object before saving
 //  it to disk in its data centers and decrypts it when you download the object
-  private def addEncryptionStatus(bucket: BucketDetail, client: AwsClient[AmazonS3])(implicit ec: ExecutionContext): BucketDetail = {
+  private def addEncryptionStatus(bucket: BucketDetail, client: AwsClient[S3Client])(implicit ec: ExecutionContext): BucketDetail = {
     // If there is no bucket encryption, AWS returns an error...
     // Assume bucket is not encrypted if we cannot successfully getBucketEncryption
     try {
-      client.client.getBucketEncryption(bucket.bucketName)
+      client.client.getBucketEncryption(GetBucketEncryptionRequest.builder.bucket(bucket.bucketName).build)
       bucket.copy(isEncrypted = true)
     } catch {
-        case e: AmazonS3Exception => {
+        case e: S3Exception => {
           bucket
         }
     }
   }
 
-  private def publicBucketsForAccount(account: AwsAccount, taClients: AwsClients[AWSSupportAsync], s3Clients: AwsClients[AmazonS3])(implicit ec: ExecutionContext): Attempt[List[BucketDetail]] = {
+  private def publicBucketsForAccount(account: AwsAccount, taClients: AwsClients[SupportAsyncClient], s3Clients: AwsClients[S3Client])(implicit ec: ExecutionContext): Attempt[List[BucketDetail]] = {
     for {
       supportClient <- taClients.get(account)
       s3Client <- s3Clients.get(account)
@@ -55,7 +55,7 @@ object TrustedAdvisorS3 {
   private[support] def parseBucketDetail(detail: TrustedAdvisorResourceDetail): Attempt[BucketDetail] = {
     def toBoolean(str: String): Boolean = str.toLowerCase.contentEquals("yes")
 
-    detail.getMetadata.asScala.toList match {
+    detail.metadata.asScala.toList match {
       case region :: _ :: bucketName :: aclAllowsRead :: aclAllowsWrite :: status :: policyAllowsAccess ::  _ =>
         Attempt.Right {
           BucketDetail(
@@ -65,7 +65,7 @@ object TrustedAdvisorS3 {
             toBoolean(aclAllowsRead),
             toBoolean(aclAllowsWrite),
             toBoolean(policyAllowsAccess),
-            isSuppressed = detail.getIsSuppressed,
+            isSuppressed = detail.isSuppressed,
             None
           )
         }

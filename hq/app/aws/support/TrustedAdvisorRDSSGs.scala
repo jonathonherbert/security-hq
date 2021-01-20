@@ -2,8 +2,8 @@ package aws.support
 
 import aws.support.TrustedAdvisor.{getTrustedAdvisorCheckDetails, parseTrustedAdvisorCheckResult}
 import aws.AwsClient
-import com.amazonaws.services.support.AWSSupportAsync
-import com.amazonaws.services.support.model.TrustedAdvisorResourceDetail
+import software.amazon.awssdk.services.support.SupportAsyncClient
+import software.amazon.awssdk.services.support.model.TrustedAdvisorResourceDetail
 import model.{RDSSGsDetail, TrustedAdvisorDetailsResult}
 import utils.attempt.{Attempt, Failure}
 
@@ -14,22 +14,22 @@ import scala.concurrent.ExecutionContext
 object TrustedAdvisorRDSSGs {
   val AWS_RDS_SECURITY_GROUP_ACCESS_RISK_IDENTIFIER = "nNauJisYIT"
 
-  def getRDSSecurityGroupDetail(client: AwsClient[AWSSupportAsync])(implicit ec: ExecutionContext): Attempt[TrustedAdvisorDetailsResult[RDSSGsDetail]] = {
+  def getRDSSecurityGroupDetail(client: AwsClient[SupportAsyncClient])(implicit ec: ExecutionContext): Attempt[TrustedAdvisorDetailsResult[RDSSGsDetail]] = {
     getTrustedAdvisorCheckDetails(client, AWS_RDS_SECURITY_GROUP_ACCESS_RISK_IDENTIFIER)
       .flatMap(parseTrustedAdvisorCheckResult(parseRDSSGDetail, ec))
   }
 
 
   private[support] def parseRDSSGDetail(detail: TrustedAdvisorResourceDetail): Attempt[RDSSGsDetail] = {
-    detail.getMetadata.asScala.toList match {
+    detail.metadata.asScala.toList match {
       case region :: rdsSgId :: ec2SGId :: alertLevel :: _ =>
         Attempt.Right {
           RDSSGsDetail(
-            region = detail.getRegion,
+            region = detail.region,
             rdsSgId = rdsSgId,
             ec2SGId = ec2SGId,
             alertLevel = alertLevel,
-            isSuppressed = detail.getIsSuppressed
+            isSuppressed = detail.isSuppressed
           )
         }
       case metadata =>

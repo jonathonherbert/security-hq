@@ -3,8 +3,10 @@ package aws.support
 import aws.AwsAsyncHandler.{awsToScala, handleAWSErrs}
 import aws.{AwsClient, AwsClients}
 import com.amazonaws.regions.Regions
-import com.amazonaws.services.support.AWSSupportAsync
-import com.amazonaws.services.support.model._
+import software.amazon.awssdk.services.support.SupportAsyncClient
+import software.amazon.awssdk.services.support.model.{DescribeTrustedAdvisorCheckResultRequest, DescribeTrustedAdvisorCheckResultResponse, DescribeTrustedAdvisorChecksRequest, DescribeTrustedAdvisorChecksResponse, RefreshTrustedAdvisorCheckRequest, TrustedAdvisorResourceDetail}
+//import com.amazonaws.services.support.AWSSupportAsync
+//import com.amazonaws.services.support.model._
 import logic.DateUtils.fromISOString
 import model._
 import utils.attempt.{Attempt, FailedAttempt, Failure}
@@ -41,34 +43,35 @@ object TrustedAdvisor {
 
   // SHOW ALL TRUSTED ADVISOR CHECKS
 
-  def getTrustedAdvisorChecks(client: AwsClient[AWSSupportAsync])(implicit ec: ExecutionContext): Attempt[List[TrustedAdvisorCheck]] = {
-    val request = new DescribeTrustedAdvisorChecksRequest().withLanguage("en")
-    handleAWSErrs(client)(awsToScala(client)(_.describeTrustedAdvisorChecksAsync)(request).map(parseTrustedAdvisorChecksResult))
+  def getTrustedAdvisorChecks(client: AwsClient[SupportAsyncClient])(implicit ec: ExecutionContext): Attempt[List[TrustedAdvisorCheck]] = {
+    val request = DescribeTrustedAdvisorChecksRequest.builder.language("en").build
+    handleAWSErrs(client)(awsToScala(client)(_.describeTrustedAdvisorCheckResult)(request).map(parseTrustedAdvisorChecksResult))
   }
 
-  def refreshTrustedAdvisorChecks(client: AwsClient[AWSSupportAsync], checkId: String)(implicit ec: ExecutionContext): Attempt[RefreshTrustedAdvisorCheckResult] = {
-    val request = new RefreshTrustedAdvisorCheckRequest()
-      .withCheckId(checkId)
-    handleAWSErrs(client)(awsToScala(client)(_.refreshTrustedAdvisorCheckAsync)(request))
+  def refreshTrustedAdvisorChecks(client: AwsClient[SupportAsyncClient], checkId: String)(implicit ec: ExecutionContext): Attempt[RefreshTrustedAdvisorCheckRequest] = {
+    val request = RefreshTrustedAdvisorCheckRequest.builder
+      .checkId(checkId)
+      .build
+    handleAWSErrs(client)(awsToScala(client)(_.refreshTrustedAdvisorCheck)(request))
   }
 
-  def parseTrustedAdvisorChecksResult(result: DescribeTrustedAdvisorChecksResult): List[TrustedAdvisorCheck] = {
-    result.getChecks.asScala.toList.map { trustedAdvisorCheckResult =>
+  def parseTrustedAdvisorChecksResult(result: DescribeTrustedAdvisorChecksResponse): List[TrustedAdvisorCheck] = {
+    result.checks.asScala.toList.map { trustedAdvisorCheckResult =>
       TrustedAdvisorCheck(
-        id = trustedAdvisorCheckResult.getId,
-        name = trustedAdvisorCheckResult.getName,
-        description = trustedAdvisorCheckResult.getDescription,
-        category = trustedAdvisorCheckResult.getCategory
+        id = trustedAdvisorCheckResult.id,
+        name = trustedAdvisorCheckResult.name,
+        description = trustedAdvisorCheckResult.description,
+        category = trustedAdvisorCheckResult.category
       )
     }
   }
 
   // GENERIC FUNCTIONALITY FOR DETAILED CHECK RESULTS
 
-  def getTrustedAdvisorCheckDetails(client: AwsClient[AWSSupportAsync], checkId: String)(implicit ec: ExecutionContext): Attempt[DescribeTrustedAdvisorCheckResultResult] = {
-    val request = new DescribeTrustedAdvisorCheckResultRequest()
-      .withLanguage("en")
-      .withCheckId(checkId)
+  def getTrustedAdvisorCheckDetails(client: AwsClient[SupportAsyncClient], checkId: String)(implicit ec: ExecutionContext): Attempt[DescribeTrustedAdvisorCheckResultResponse] = {
+    val request = DescribeTrustedAdvisorCheckResultRequest.builder
+      .language("en")
+      .checkId(checkId)
     handleAWSErrs(client)(awsToScala(client)(_.describeTrustedAdvisorCheckResultAsync)(request))
   }
 
@@ -99,18 +102,18 @@ object TrustedAdvisor {
     }
   }
 
-  def parseTrustedAdvisorCheckResult[A <: TrustedAdvisorCheckDetails](parseDetails: TrustedAdvisorResourceDetail => Attempt[A], ec: ExecutionContext)(result: DescribeTrustedAdvisorCheckResultResult): Attempt[TrustedAdvisorDetailsResult[A]] = {
+  def parseTrustedAdvisorCheckResult[A <: TrustedAdvisorCheckDetails](parseDetails: TrustedAdvisorResourceDetail => Attempt[A], ec: ExecutionContext)(result: DescribeTrustedAdvisorCheckResultResponse): Attempt[TrustedAdvisorDetailsResult[A]] = {
     implicit val executionContext: ExecutionContext = ec
     for {
-      resources <- Attempt.traverse(result.getResult.getFlaggedResources.asScala.toList)(parseDetails)
+      resources <- Attempt.traverse(result.result.flaggedResources.asScala.toList)(parseDetails)
     } yield TrustedAdvisorDetailsResult(
-      checkId = result.getResult.getCheckId,
-      status = result.getResult.getStatus,
-      timestamp = fromISOString(result.getResult.getTimestamp),
+      checkId = result.result.checkId,
+      status = result.result.status,
+      timestamp = fromISOString(result.result.timestamp),
       flaggedResources = sortSecurityFlags(resources),
-      resourcesIgnored = result.getResult.getResourcesSummary.getResourcesIgnored,
-      resourcesFlagged = result.getResult.getResourcesSummary.getResourcesFlagged,
-      resourcesSuppressed = result.getResult.getResourcesSummary.getResourcesSuppressed
+      resourcesIgnored = result.result.resourcesSummary.resourcesIgnored,
+      resourcesFlagged = result.result.resourcesSummary.resourcesFlagged,
+      resourcesSuppressed = result.result.resourcesSummary.resourcesSuppressed
     )
   }
 }

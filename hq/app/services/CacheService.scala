@@ -1,43 +1,43 @@
 package services
 
 import api.Snyk
+import aws.AwsClients
 import aws.ec2.EC2
 import aws.iam.IAMClient
 import aws.inspector.Inspector
 import aws.support.{TrustedAdvisorExposedIAMKeys, TrustedAdvisorS3}
-import aws.AwsClients
-import com.amazonaws.regions.Regions
-import com.amazonaws.services.cloudformation.AmazonCloudFormationAsync
-import com.amazonaws.services.ec2.AmazonEC2Async
-import com.amazonaws.services.identitymanagement.AmazonIdentityManagementAsync
-import com.amazonaws.services.inspector.AmazonInspectorAsync
-import com.amazonaws.services.s3.AmazonS3
-import com.amazonaws.services.support.AWSSupportAsync
 import com.gu.Box
 import config.Config
 import model._
+import play.api._
 import play.api.inject.ApplicationLifecycle
 import play.api.libs.ws.WSClient
-import play.api._
 import rx.lang.scala.Observable
+import software.amazon.awssdk.services.cloudformation.CloudFormationAsyncClient
+import software.amazon.awssdk.services.ec2.Ec2AsyncClient
+import software.amazon.awssdk.services.ec2.model.Region
+import software.amazon.awssdk.services.iam.IamAsyncClient
+import software.amazon.awssdk.services.inspector.InspectorAsyncClient
+import software.amazon.awssdk.services.s3.S3Client
+import software.amazon.awssdk.services.support.SupportAsyncClient
 import utils.attempt.{Attempt, FailedAttempt, Failure}
 
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
 
 class CacheService(
-    config: Configuration,
-    lifecycle: ApplicationLifecycle,
-    environment: Environment,
-    configraun: com.gu.configraun.models.Configuration,
-    wsClient: WSClient,
-    inspectorClients: AwsClients[AmazonInspectorAsync],
-    ec2Clients: AwsClients[AmazonEC2Async],
-    cfnClients: AwsClients[AmazonCloudFormationAsync],
-    taClients: AwsClients[AWSSupportAsync],
-    s3Clients: AwsClients[AmazonS3],
-    iamClients: AwsClients[AmazonIdentityManagementAsync],
-    regions: List[Regions]
+                    config: Configuration,
+                    lifecycle: ApplicationLifecycle,
+                    environment: Environment,
+                    configraun: com.gu.configraun.models.Configuration,
+                    wsClient: WSClient,
+                    inspectorClients: AwsClients[InspectorAsyncClient],
+                    ec2Clients: AwsClients[Ec2AsyncClient],
+                    cfnClients: AwsClients[CloudFormationAsyncClient],
+                    taClients: AwsClients[SupportAsyncClient],
+                    s3Clients: AwsClients[S3Client],
+                    iamClients: AwsClients[IamAsyncClient],
+                    regions: List[Region]
   )(implicit ec: ExecutionContext) extends Logging {
   private val accounts = Config.getAwsAccounts(config)
   private val startingCache = accounts.map(acc => (acc, Left(Failure.cacheServiceErrorPerAccount(acc.id, "cache").attempt))).toMap

@@ -1,14 +1,14 @@
 package aws
 
-import com.amazonaws.AmazonWebServiceRequest
-import com.amazonaws.handlers.AsyncHandler
+import software.amazon.awssdk.AmazonWebServiceRequest
 import play.api.Logging
+import software.amazon.awssdk.core.internal.http.AmazonAsyncHttpClient
 import utils.attempt.{Attempt, Failure}
 
 import scala.concurrent.{ExecutionContext, Future, Promise}
 
 
-class AwsAsyncPromiseHandler[R <: AmazonWebServiceRequest, T](promise: Promise[T], clientContext: AwsClient[_]) extends AsyncHandler[R, T] with Logging {
+class AwsAsyncPromiseHandler[R <: , T](promise: Promise[T], clientContext: AwsClient[_]) extends AsyncHandler[R, T] with Logging {
   def onError(e: Exception): Unit = {
     val context = Failure.contextString(clientContext)
     logger.warn(s"Failed to execute AWS SDK operation (${clientContext.client.getClass.getSimpleName}), $context", e)
