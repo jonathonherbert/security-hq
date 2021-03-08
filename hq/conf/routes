@@ -18,6 +18,8 @@ GET        /security-groups/:accountId                controllers.SecurityGroups
 
 GET        /snyk                                      controllers.SnykController.snyk
 
+GET        /report                                    controllers.ReportController.report
+
 GET        /login                                     controllers.AuthController.login
 GET        /loginError                                controllers.AuthController.loginError
 GET        /oauthCallback                             controllers.AuthController.oauthCallback

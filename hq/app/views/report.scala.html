@@ -1,0 +1,24 @@
+@import model.AwsAccount
+
+@(iamVulnerabilities: List[DataCategory])(implicit assets: AssetsFinder)
+
+
+@main(Nil) { @* Header *@
+    <div class="hq-sub-header">
+        <div class="container hq-sub-header__row">
+            <div class="hq-sub-header__name">
+                <h4 class="header light grey-text text-lighten-5">Centralised AWS Account security management</h4>
+            </div>
+        </div>
+    </div>
+
+} {
+    @for(iv <- iamVulnerabilities) {
+        <h1>@iv.name</h1>
+        <ul>
+            @for(dataPoint <- iv.data) {
+                <li>@dataPoint.time.toDateTimeISO - @dataPoint.value</li>
+            }
+        </ul>
+    }
+}
