@@ -159,27 +159,27 @@ class CacheService(
       if (environment.mode == Mode.Prod) 10.seconds
       else Duration.Zero
 
-    val publicBucketsSubscription = Observable.interval(initialDelay + 1000.millis, 5.minutes).subscribe { _ =>
+    val publicBucketsSubscription = Observable.interval(Duration.Zero, 1.hour).subscribe { _ =>
       refreshPublicBucketsBox()
     }
 
-    val exposedKeysSubscription = Observable.interval(initialDelay + 2000.millis, 5.minutes).subscribe { _ =>
+    val exposedKeysSubscription = Observable.interval(5.minutes, 1.hour).subscribe { _ =>
       refreshExposedKeysBox()
     }
 
-    val sgSubscription = Observable.interval(initialDelay + 3000.millis, 5.minutes).subscribe { _ =>
+    val sgSubscription = Observable.interval(10.minutes, 1.hour).subscribe { _ =>
       refreshSgsBox()
     }
 
-    val credentialsSubscription = Observable.interval(initialDelay + 4000.millis, 90.minutes).subscribe { _ =>
+    val credentialsSubscription = Observable.interval(15.minutes, 90.minutes).subscribe { _ =>
       refreshCredentialsBox()
     }
 
-    val snykSubscription = Observable.interval(initialDelay + 6000.millis, 30.minutes).subscribe { _ =>
+    val snykSubscription = Observable.interval(20.minutes, 1.hour).subscribe { _ =>
       refreshSnykBox()
     }
 
-    val gcpSubscription = Observable.interval(initialDelay + 6000.millis, 90.minutes).subscribe { _ =>
+    val gcpSubscription = Observable.interval(25.minutes, 90.minutes).subscribe { _ =>
       logger.info("refreshing the GCP Box now")
       refreshGcpBox()
     }

@@ -46,7 +46,7 @@ class MetricService(
       if (environment.mode == Mode.Prod) 5.minutes
       else Duration.Zero
 
-    val cloudwatchSubscription = Observable.interval(initialDelay, 6.hours).subscribe { _ =>
+    val cloudwatchSubscription = Observable.interval(30.minutes, 6.hours).subscribe { _ =>
       logger.info("Posting new metrics to cloudwatch")
       postCachedContentsAsMetrics()
     }
