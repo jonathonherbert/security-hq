@@ -109,8 +109,10 @@ class CacheService(
       allPublicBuckets <- TrustedAdvisorS3.getAllPublicBuckets(accounts, taClients, s3Clients)
     } yield {
       logger.info("Sending the refreshed data to the Public Buckets Box")
-      publicBucketsBox.send(allPublicBuckets.toMap)
-      Cloudwatch.logAsMetric(allPublicBuckets, Cloudwatch.DataType.s3Total)
+      if(allPublicBuckets.exists(_._2.isRight)) {
+        publicBucketsBox.send(allPublicBuckets.toMap)
+        Cloudwatch.logAsMetric(allPublicBuckets, Cloudwatch.DataType.s3Total)
+      }
     }
   }
 
