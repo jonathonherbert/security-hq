@@ -24,12 +24,14 @@ object IAMClient extends Logging {
   private def generateCredentialsReport(client: AwsClient[AmazonIdentityManagementAsync])(implicit ec: ExecutionContext): Attempt[GenerateCredentialReportResult] = {
     logger.info("generate credentials report")
     val request = new GenerateCredentialReportRequest()
+    Thread.sleep(5000)
     handleAWSErrs(client)(awsToScala(client)(_.generateCredentialReportAsync)(request))
   }
 
   private def getCredentialsReport(client: AwsClient[AmazonIdentityManagementAsync])(implicit ec: ExecutionContext): Attempt[IAMCredentialsReport] = {
     logger.info("get credentials report")
     val request = new GetCredentialReportRequest()
+    Thread.sleep(5000)
     handleAWSErrs(client)(awsToScala(client)(_.getCredentialReportAsync)(request)).flatMap(CredentialsReport.extractReport)
   }
 
