@@ -56,7 +56,6 @@ object CredentialsReportDisplay {
   }
 
   def toCredentialReportDisplay(report: IAMCredentialsReport): CredentialReportDisplay = {
-
     report.entries.filterNot(_.rootUser).foldLeft(CredentialReportDisplay(report.generatedAt)) { (report, cred) =>
       val machineUser =
         if (!cred.passwordEnabled.getOrElse(false)) {
